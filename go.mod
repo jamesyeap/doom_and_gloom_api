@@ -2,6 +2,8 @@ module github.com/jamesyeap/doom_and_gloom_api
 
 go 1.17
 
+// +heroku goVersion go1.17
+
 require (
 	github.com/emvi/null v1.3.1
 	github.com/gin-gonic/gin v1.7.7
