@@ -66,7 +66,12 @@ type GetTaskByIdParams struct {
 }
 
 type GetTaskByCategoryIdParams struct {
-	Category_Id int `json:category_id`
+	Category_Id int `json:"category_id"`
+}
+
+type CreateCategoryParams struct {
+	Title string `json:"category_title"`
+	User User `json:"user"` 
 }
 
 // CORS middleware
@@ -259,10 +264,27 @@ func main() {
 		addTask(params, c, cancel)		
 	})
 
-	// gets a list of all categories
-	r.GET("/allcategories", func(c *gin.Context) {
+	// create a category
+	r.POST("/addcategory", func(c *gin.Context) {
 		_, cancel := context.WithCancel(context.Background());
-		var categoryList []Category = getAllCategories(c, cancel);
+
+		var params CreateCategoryParams
+		err := c.BindJSON(&params)
+		assertJSONSuccess(c, cancel, err);
+
+		addCategory(params, c, cancel)	
+	})
+
+	// gets a list of all categories
+	r.POST("/allcategories", func(c *gin.Context) {
+		_, cancel := context.WithCancel(context.Background());
+
+		var params User;
+		err := c.BindJSON(&params);
+		assertJSONSuccess(c, cancel, err);
+
+		var categoryList []Category = getAllCategories(params.Id, c, cancel);
+
 		c.JSON(200, categoryList)
 	})
 
@@ -555,12 +577,26 @@ func addTask(params CreateTaskParams, client *gin.Context, cancel context.Cancel
 	}
 }
 
-/* Returns a list of categories with their associated primary-keys */
-func getAllCategories(client *gin.Context, cancel context.CancelFunc) ([]Category) {
+/* Adds a Category to the database */
+func addCategory(params CreateCategoryParams, client *gin.Context, cancel context.CancelFunc) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	categories, err := c.Query(context.Background(), "SELECT * from categories;")
+	commandTag, err := c.Exec(context.Background(), "INSERT INTO categories (user_id, title) VALUES ($1, $2);", params.User.Id, params.Title)
+	assertDBOperationSuccess(client, cancel, err);
+	if commandTag.RowsAffected() != 1 {
+		fmt.Fprintf(os.Stderr, "Category not added to db\n")
+		client.JSON(500, gin.H{"error": err.Error()})
+		return;
+	}
+}
+
+/* Returns a list of categories with their associated primary-keys */
+func getAllCategories(user_id int, client *gin.Context, cancel context.CancelFunc) ([]Category) {
+	c := connectDB(client, cancel)
+	defer c.Close(context.Background())
+
+	categories, err := c.Query(context.Background(), "SELECT id, title from categories WHERE user_id=$1;", user_id)
 	assertDBOperationSuccess(client, cancel, err);
 	defer categories.Close();
 
