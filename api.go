@@ -63,12 +63,10 @@ type UpdateTaskParams struct {
 
 type GetTaskByIdParams struct {
 	Id int `json:"id"`
-	User User `json:"user"`
 }
 
 type GetTaskByCategoryIdParams struct {
 	Category_Id int `json:category_id`
-	User User `json:"user"`
 }
 
 // CORS middleware
@@ -180,7 +178,7 @@ func main() {
 		err := c.BindJSON(&params);
 		assertJSONSuccess(c, cancel, err);
 
-		var t Task = getTask(params.User.Id, params.Id, c, cancel);
+		var t Task = getTask(params.Id, c, cancel);
 
 		c.JSON(200, t)
 	})
@@ -193,7 +191,7 @@ func main() {
 		err := c.BindJSON(&params);
 		assertJSONSuccess(c, cancel, err);
 
-		var taskList []Task = getTaskByCategoryId(params.User.Id, params.Category_Id, c, cancel);
+		var taskList []Task = getTaskByCategoryId(params.Category_Id, c, cancel);
 
 		c.JSON(200, taskList)
 	})
@@ -391,11 +389,11 @@ func getAllTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]
 }
 
 /* Returns an array of Tasks that belong to the specified ID stored in the database */
-func getTaskByCategoryId(user_id int, category_id int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
+func getTaskByCategoryId(category_id int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	tasks, err := c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1, $2);", user_id, category_id)
+	tasks, err := c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1);", category_id)
 	assertDBOperationSuccess(client, cancel, err);
 	defer tasks.Close();
 
@@ -479,13 +477,13 @@ func getIncompleteTasks(userId int, client *gin.Context, cancel context.CancelFu
 }
 
 /* Return a Task by its id */
-func getTask(user_id int, task_id int, client *gin.Context, cancel context.CancelFunc) (Task) {
+func getTask(task_id int, client *gin.Context, cancel context.CancelFunc) (Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
 	var t Task
 
-	err := c.QueryRow(context.Background(), "SELECT * FROM public.get_task_by_id($1, $2);", user_id, task_id).Scan(
+	err := c.QueryRow(context.Background(), "SELECT * FROM public.get_task_by_id($1);", task_id).Scan(
 		&t.Id, 
 		&t.Title,
 		&t.Description,

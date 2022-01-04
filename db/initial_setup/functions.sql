@@ -36,7 +36,7 @@ END
 $$;
 
 -- get task by id
-CREATE OR REPLACE FUNCTION public.get_task_by_id(Specified_User_Id INT, Specified_Task_Id INT)
+CREATE OR REPLACE FUNCTION public.get_task_by_id(Specified_Task_Id INT)
 	RETURNS TABLE 
 		(
 			id INT,
@@ -68,7 +68,6 @@ BEGIN
 			public.tasks
 				INNER JOIN public.categories ON public.tasks.category_id=public.categories.id
 		WHERE
-			tasks.user_id=Specified_User_Id AND
 			tasks.id=Specified_Task_Id;
 END
 $$;
@@ -152,7 +151,7 @@ END
 $$;
 
 -- get tasks by category id
-CREATE OR REPLACE FUNCTION public.get_tasks_in_category(Specified_User_Id INT, Specified_Category_Id INT)
+CREATE OR REPLACE FUNCTION public.get_tasks_in_category(Specified_Category_Id INT)
 	RETURNS TABLE
 		(
 			id INT,
@@ -185,7 +184,6 @@ BEGIN
 				INNER JOIN public.categories ON public.tasks.category_id=public.categories.id
 
 		WHERE
-			tasks.user_id = Specified_User_Id AND
 			categories.id = Specified_Category_Id;
 END
 $$;
