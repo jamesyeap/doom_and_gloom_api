@@ -24,8 +24,8 @@ type Credentials struct {
 }
 
 type User struct {
-	Id int `json:id`
-	Username string `json:username`
+	Id int `json:"id"`
+	Username string `json:"username"`
 }
 
 type Task struct {
@@ -48,8 +48,9 @@ type Category struct {
 type CreateTaskParams struct {
 	Title string `json:"title"`
 	Description string `json:"description"`
-	Category_Id string `json:"category_id"`
+	Category_Id int `json:"category_id"`
 	Deadline null.Time `json:"deadline"`
+	User User `json:"user"`
 }
 
 type UpdateTaskParams struct {
@@ -57,15 +58,18 @@ type UpdateTaskParams struct {
 	Title string `json:"title"`
 	Description string `json:"description"`
 	Category_Id int `json:"category_id"`
-	Deadline null.Time `json:"deadline"`	
+	Deadline null.Time `json:"deadline"`
+	User User `json:"user"`
 }
 
 type GetTaskByIdParams struct {
 	Id int `json:"id"`
+	User User `json:"user"`
 }
 
 type GetTaskByCategoryIdParams struct {
 	Category_Id int `json:category_id`
+	User User `json:"user"`
 }
 
 // CORS middleware
@@ -132,27 +136,39 @@ func main() {
 		}
 	})
 
-	// get all tasks
+	// get all tasks created by a user
 	r.POST("/alltasks", func(c *gin.Context) {
 		_, cancel := context.WithCancel(context.Background());
 
-		var taskList []Task = getAllTasks(c, cancel);
+		var params User;
+		err := c.BindJSON(&params);
+		assertJSONSuccess(c, cancel, err);
+
+		var taskList []Task = getAllTasks(params.Id, c, cancel);
 		c.JSON(200, taskList)
 	})
 
 	// get all completed tasks
-	r.GET("/completedtasks", func(c *gin.Context) {
+	r.POST("/completedtasks", func(c *gin.Context) {
 		_, cancel := context.WithCancel(context.Background());
 
-		var taskList []Task = getCompletedTasks(c, cancel);
+		var params User;
+		err := c.BindJSON(&params);
+		assertJSONSuccess(c, cancel, err);		
+
+		var taskList []Task = getCompletedTasks(params.Id, c, cancel);
 		c.JSON(200, taskList)
 	})
 
 	// get all incomplete tasks
-	r.GET("/incompletetasks", func(c *gin.Context) {
+	r.POST("/incompletetasks", func(c *gin.Context) {
 		_, cancel := context.WithCancel(context.Background());
 
-		var taskList []Task = getIncompleteTasks(c, cancel);
+		var params User;
+		err := c.BindJSON(&params);
+		assertJSONSuccess(c, cancel, err);
+
+		var taskList []Task = getIncompleteTasks(params.Id, c, cancel);
 		c.JSON(200, taskList)
 	})
 
@@ -164,7 +180,7 @@ func main() {
 		err := c.BindJSON(&params);
 		assertJSONSuccess(c, cancel, err);
 
-		var t Task = getTask(params.Id, c, cancel);
+		var t Task = getTask(params.User.Id, params.Id, c, cancel);
 
 		c.JSON(200, t)
 	})
@@ -177,7 +193,7 @@ func main() {
 		err := c.BindJSON(&params);
 		assertJSONSuccess(c, cancel, err);
 
-		var taskList []Task = getTaskByCategoryId(params.Category_Id, c, cancel);
+		var taskList []Task = getTaskByCategoryId(params.User.Id, params.Category_Id, c, cancel);
 
 		c.JSON(200, taskList)
 	})
@@ -345,11 +361,11 @@ func logIn(username string, password string, client *gin.Context, cancel context
 }
 
 /* Returns an array of all Tasks stored in the database */
-func getAllTasks(client *gin.Context, cancel context.CancelFunc) ([]Task) {
+func getAllTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	tasks, err := c.Query(context.Background(), "SELECT * from public.get_all_tasks();")
+	tasks, err := c.Query(context.Background(), "SELECT * from public.get_all_tasks($1);", userId);
 	assertDBOperationSuccess(client, cancel, err);
 	defer tasks.Close();
 
@@ -375,11 +391,11 @@ func getAllTasks(client *gin.Context, cancel context.CancelFunc) ([]Task) {
 }
 
 /* Returns an array of Tasks that belong to the specified ID stored in the database */
-func getTaskByCategoryId(category_id int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
+func getTaskByCategoryId(user_id int, category_id int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	tasks, err := c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1);", category_id)
+	tasks, err := c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1, $2);", user_id, category_id)
 	assertDBOperationSuccess(client, cancel, err);
 	defer tasks.Close();
 
@@ -404,11 +420,11 @@ func getTaskByCategoryId(category_id int, client *gin.Context, cancel context.Ca
 	return taskSlice;
 }
 
-func getCompletedTasks(client *gin.Context, cancel context.CancelFunc) ([]Task) {
+func getCompletedTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	tasks, err := c.Query(context.Background(), "SELECT * from public.get_completed_tasks();")
+	tasks, err := c.Query(context.Background(), "SELECT * from public.get_completed_tasks($1);", userId)
 	assertDBOperationSuccess(client, cancel, err);
 	defer tasks.Close();
 
@@ -433,11 +449,11 @@ func getCompletedTasks(client *gin.Context, cancel context.CancelFunc) ([]Task) 
 	return taskSlice;
 }
 
-func getIncompleteTasks(client *gin.Context, cancel context.CancelFunc) ([]Task) {
+func getIncompleteTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	tasks, err := c.Query(context.Background(), "SELECT * from public.get_incomplete_tasks();")
+	tasks, err := c.Query(context.Background(), "SELECT * from public.get_incomplete_tasks($1);", userId)
 	assertDBOperationSuccess(client, cancel, err);
 	defer tasks.Close();
 
@@ -463,16 +479,17 @@ func getIncompleteTasks(client *gin.Context, cancel context.CancelFunc) ([]Task)
 }
 
 /* Return a Task by its id */
-func getTask(id int, client *gin.Context, cancel context.CancelFunc) (Task) {
+func getTask(user_id int, task_id int, client *gin.Context, cancel context.CancelFunc) (Task) {
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
 	var t Task
 
-	err := c.QueryRow(context.Background(), "SELECT * from public.get_all_tasks() WHERE id=$1;", id).Scan(
+	err := c.QueryRow(context.Background(), "SELECT * FROM public.get_task_by_id($1, $2);", user_id, task_id).Scan(
 		&t.Id, 
 		&t.Title,
 		&t.Description,
+		&t.Category_Id,
 		&t.Category,
 		&t.Deadline,
 		&t.Completed,
@@ -489,7 +506,7 @@ func updateTask(t UpdateTaskParams, client *gin.Context, cancel context.CancelFu
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	_, err := c.Exec(context.Background(), "UPDATE tasks SET category_id=$1, title=$2, description=$3, deadline=$4 WHERE id=$5;", t.Category_Id, t.Title, t.Description, t.Deadline, t.Id)
+	_, err := c.Exec(context.Background(), "UPDATE tasks SET category_id=$1, title=$2, description=$3, deadline=$4 WHERE id=$5 AND user_id=$6;", t.Category_Id, t.Title, t.Description, t.Deadline, t.Id, t.User.Id)
 	assertDBOperationSuccess(client, cancel, err);
 }
 
@@ -531,7 +548,7 @@ func addTask(params CreateTaskParams, client *gin.Context, cancel context.Cancel
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	commandTag, err := c.Exec(context.Background(), "INSERT INTO tasks (category_id, title, description, deadline) VALUES ($1, $2, $3, $4);", params.Category_Id, params.Title, params.Description, params.Deadline)
+	commandTag, err := c.Exec(context.Background(), "INSERT INTO tasks (category_id, title, description, deadline, user_id, completed) VALUES ($1, $2, $3, $4, $5, FALSE);", params.Category_Id, params.Title, params.Description, params.Deadline, params.User.Id)
 	assertDBOperationSuccess(client, cancel, err);
 	if commandTag.RowsAffected() != 1 {
 		fmt.Fprintf(os.Stderr, "Task not added to db\n")
