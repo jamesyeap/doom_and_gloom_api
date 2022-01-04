@@ -59,7 +59,6 @@ type UpdateTaskParams struct {
 	Description string `json:"description"`
 	Category_Id int `json:"category_id"`
 	Deadline null.Time `json:"deadline"`
-	User User `json:"user"`
 }
 
 type GetTaskByIdParams struct {
@@ -145,6 +144,7 @@ func main() {
 		assertJSONSuccess(c, cancel, err);
 
 		var taskList []Task = getAllTasks(params.Id, c, cancel);
+
 		c.JSON(200, taskList)
 	})
 
@@ -506,7 +506,7 @@ func updateTask(t UpdateTaskParams, client *gin.Context, cancel context.CancelFu
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	_, err := c.Exec(context.Background(), "UPDATE tasks SET category_id=$1, title=$2, description=$3, deadline=$4 WHERE id=$5 AND user_id=$6;", t.Category_Id, t.Title, t.Description, t.Deadline, t.Id, t.User.Id)
+	_, err := c.Exec(context.Background(), "UPDATE tasks SET category_id=$1, title=$2, description=$3, deadline=$4 WHERE id=$5;", t.Category_Id, t.Title, t.Description, t.Deadline, t.Id)
 	assertDBOperationSuccess(client, cancel, err);
 }
 
