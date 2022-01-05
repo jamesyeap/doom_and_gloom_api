@@ -33,7 +33,7 @@ type Task struct {
 	Title string `json:"title"`
 	Description string `json:"description"`
 	Category_Id int `json:"category_id"`
-	Category string `json:"category"`
+	Category string `json:"category_name"`
 	Deadline null.Time `json:"deadline"`
 	Completed bool `json:"completed"`
 	Created_at null.Time `json:"created_at"`
