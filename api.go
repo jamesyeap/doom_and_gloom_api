@@ -42,7 +42,7 @@ type Task struct {
 
 type Category struct {
 	Id int `json:"category_id"`
-	Title string `json:"category_title"`
+	Title string `json:"category_name"`
 }
 
 type CreateTaskParams struct {
