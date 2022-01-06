@@ -140,43 +140,6 @@ func main() {
 		}
 	})
 
-	// get all tasks created by a user
-	// r.POST("/alltasks", func(c *gin.Context) {
-	// 	_, cancel := context.WithCancel(context.Background());
-
-	// 	var params User;
-	// 	err := c.BindJSON(&params);
-	// 	assertJSONSuccess(c, cancel, err);
-
-	// 	var taskList []Task = getAllTasks(params.Id, c, cancel);
-
-	// 	c.JSON(200, taskList)
-	// })
-
-	// get all completed tasks
-	// r.POST("/completedtasks", func(c *gin.Context) {
-	// 	_, cancel := context.WithCancel(context.Background());
-
-	// 	var params User;
-	// 	err := c.BindJSON(&params);
-	// 	assertJSONSuccess(c, cancel, err);		
-
-	// 	var taskList []Task = getCompletedTasks(params.Id, c, cancel);
-	// 	c.JSON(200, taskList)
-	// })
-
-	// get all incomplete tasks
-	// r.POST("/incompletetasks", func(c *gin.Context) {
-	// 	_, cancel := context.WithCancel(context.Background());
-
-	// 	var params User;
-	// 	err := c.BindJSON(&params);
-	// 	assertJSONSuccess(c, cancel, err);
-
-	// 	var taskList []Task = getIncompleteTasks(params.Id, c, cancel);
-	// 	c.JSON(200, taskList)
-	// })
-
 	// get tasks by category id and completion status
 	r.POST("/gettasks", func(c *gin.Context) {
 		_, cancel := context.WithCancel(context.Background());
@@ -202,19 +165,6 @@ func main() {
 
 		c.JSON(200, t)
 	})
-
-	// get tasks by category id
-	// r.POST("/gettaskbycategoryid", func(c *gin.Context) {
-	// 	_, cancel := context.WithCancel(context.Background());
-
-	// 	var params GetTaskByCategoryIdParams
-	// 	err := c.BindJSON(&params);
-	// 	assertJSONSuccess(c, cancel, err);
-
-	// 	var taskList []Task = getTaskByCategoryId(params.Category_Id, c, cancel);
-
-	// 	c.JSON(200, taskList)
-	// })
 
 	// update a specific task by id
 	r.POST("/updatetask", func(c *gin.Context) {
@@ -395,36 +345,6 @@ func logIn(username string, password string, client *gin.Context, cancel context
 	return user, nil;
 }
 
-/* Returns an array of all Tasks stored in the database */
-// func getAllTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
-// 	c := connectDB(client, cancel)
-// 	defer c.Close(context.Background())
-
-// 	tasks, err := c.Query(context.Background(), "SELECT * from public.get_all_tasks($1);", userId);
-// 	assertDBOperationSuccess(client, cancel, err);
-// 	defer tasks.Close();
-
-// 	var taskSlice []Task
-// 	for tasks.Next() {
-// 		var t Task
-// 		err = tasks.Scan(
-// 			&t.Id, 
-// 			&t.Title,
-// 			&t.Description,
-// 			&t.Category_Id,
-// 			&t.Category,
-// 			&t.Deadline,
-// 			&t.Completed,
-// 			&t.Created_at,
-// 			&t.Updated_at,	
-// 		)
-// 		assertDBOperationSuccess(client, cancel, err);
-// 		taskSlice = append(taskSlice, t)
-// 	}
-
-// 	return taskSlice;
-// }
-
 /* Returns an array of Tasks based on filtering criteria */
 func getTasks(filterParams QueryTasksParams, client *gin.Context, cancel context.CancelFunc) ([]Task) {
 	c := connectDB(client, cancel)
@@ -438,24 +358,24 @@ func getTasks(filterParams QueryTasksParams, client *gin.Context, cancel context
 	if (filterParams.CategoryId == -1) {
 		if (filterParams.CompletionStatus == 0) {
 			/* get all tasks */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_all_tasks($1);", filterParams.User.Id);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_all_tasks($1) ORDER BY id;", filterParams.User.Id);
 		} else if (filterParams.CompletionStatus == 1) {
 			/* get all completed tasks */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_completed_tasks($1);", filterParams.User.Id);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_completed_tasks($1) ORDER BY id;", filterParams.User.Id);
 		} else {
 			/* get all incomplete tasks */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_incomplete_tasks($1);", filterParams.User.Id);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_incomplete_tasks($1) ORDER BY id;", filterParams.User.Id);
 		}
 	} else {
 		if (filterParams.CompletionStatus == 0) {
 			/* get all tasks tagged with the category */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1);", filterParams.CategoryId);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1) ORDER BY id;", filterParams.CategoryId);
 		} else if (filterParams.CompletionStatus == 1) {
 			/* get all completed tasks tagged with the category */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1) WHERE completed='t';", filterParams.CategoryId);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1) WHERE completed='t' ORDER BY id;", filterParams.CategoryId);
 		} else {
 			/* get all incomplete tasks tagged with the category */
-			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1) WHERE completed='f';", filterParams.CategoryId);
+			tasks, err = c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1) WHERE completed='f' ORDER BY id;", filterParams.CategoryId);
 		}
 	}
 
@@ -479,94 +399,6 @@ func getTasks(filterParams QueryTasksParams, client *gin.Context, cancel context
 
 	return taskSlice;
 }
-
-/* Returns an array of Tasks that belong to the specified ID stored in the database */
-// func getTaskByCategoryId(category_id int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
-// 	c := connectDB(client, cancel)
-// 	defer c.Close(context.Background())
-
-// 	tasks, err := c.Query(context.Background(), "SELECT * from public.get_tasks_in_category($1);", category_id)
-// 	assertDBOperationSuccess(client, cancel, err);
-// 	defer tasks.Close();
-
-// 	var taskSlice []Task
-// 	for tasks.Next() {
-// 		var t Task
-// 		err = tasks.Scan(
-// 			&t.Id, 
-// 			&t.Title,
-// 			&t.Description,
-// 			&t.Category_Id,
-// 			&t.Category,
-// 			&t.Deadline,
-// 			&t.Completed,
-// 			&t.Created_at,
-// 			&t.Updated_at,	
-// 		)
-// 		assertDBOperationSuccess(client, cancel, err);
-// 		taskSlice = append(taskSlice, t)
-// 	}
-
-// 	return taskSlice;
-// }
-
-// func getCompletedTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
-// 	c := connectDB(client, cancel)
-// 	defer c.Close(context.Background())
-
-// 	tasks, err := c.Query(context.Background(), "SELECT * from public.get_completed_tasks($1);", userId)
-// 	assertDBOperationSuccess(client, cancel, err);
-// 	defer tasks.Close();
-
-// 	var taskSlice []Task
-// 	for tasks.Next() {
-// 		var t Task
-// 		err = tasks.Scan(
-// 			&t.Id, 
-// 			&t.Title,
-// 			&t.Description,
-// 			&t.Category_Id,
-// 			&t.Category,
-// 			&t.Deadline,
-// 			&t.Completed,
-// 			&t.Created_at,
-// 			&t.Updated_at,	
-// 		)
-// 		assertDBOperationSuccess(client, cancel, err);
-// 		taskSlice = append(taskSlice, t)
-// 	}
-
-// 	return taskSlice;
-// }
-
-// func getIncompleteTasks(userId int, client *gin.Context, cancel context.CancelFunc) ([]Task) {
-// 	c := connectDB(client, cancel)
-// 	defer c.Close(context.Background())
-
-// 	tasks, err := c.Query(context.Background(), "SELECT * from public.get_incomplete_tasks($1);", userId)
-// 	assertDBOperationSuccess(client, cancel, err);
-// 	defer tasks.Close();
-
-// 	var taskSlice []Task
-// 	for tasks.Next() {
-// 		var t Task
-// 		err = tasks.Scan(
-// 			&t.Id, 
-// 			&t.Title,
-// 			&t.Description,
-// 			&t.Category_Id,
-// 			&t.Category,
-// 			&t.Deadline,
-// 			&t.Completed,
-// 			&t.Created_at,
-// 			&t.Updated_at,	
-// 		)
-// 		assertDBOperationSuccess(client, cancel, err);
-// 		taskSlice = append(taskSlice, t)
-// 	}
-
-// 	return taskSlice;
-// }
 
 /* Return a Task by its id */
 func getTask(task_id int, client *gin.Context, cancel context.CancelFunc) (Task) {
@@ -666,7 +498,7 @@ func getAllCategories(user_id int, client *gin.Context, cancel context.CancelFun
 	c := connectDB(client, cancel)
 	defer c.Close(context.Background())
 
-	categories, err := c.Query(context.Background(), "SELECT id, title from categories WHERE user_id=$1;", user_id)
+	categories, err := c.Query(context.Background(), "SELECT id, title from categories WHERE user_id=$1 ORDER BY id;", user_id)
 	assertDBOperationSuccess(client, cancel, err);
 	defer categories.Close();
 
@@ -729,48 +561,3 @@ func assertJSONSuccess(client *gin.Context, cancel context.CancelFunc, e error) 
 		cancel();
 	}
 }
-
-/* ------ test-commands ------ */
-// test if server is still up
-// 		curl -X GET 0.0.0.0:8080/ping
-//		curl -X GET https://tomato-backend-api.herokuapp.com/ping
-
-// get all tasks
-//		curl -X GET 0.0.0.0:8080/alltasks
-//		curl -X GET https://tomato-backend-api.herokuapp.com/alltasks
-
-// get a task where id=1
-//		curl -X POST 0.0.0.0:8080/gettask -H "Content-Type: application/json" -d '2'
-//		curl -X POST https://tomato-backend-api.herokuapp.com/gettask -H "Content-Type: application/json" -d '2'
-
-// mark a task as complete with id
-//		curl -X POST 0.0.0.0:8080/completetask -H "Content-Type: application/json" -d '2'
-
-// mark a task as incomplete with id
-//		curl -X POST 0.0.0.0:8080/incompletetask -H "Content-Type: application/json" -d '2'
-
-// deletes a task by its id (which is its primary-key in the db)
-// 		curl -X POST 0.0.0.0:8080/deletetask -H "Content-Type: application/json" -d '2'
-// 		curl -X POST https://tomato-backend-api.herokuapp.com/deletetask -H "Content-Type: application/json" -d '2'
-
-// add a task
-//		curl -X POST 0.0.0.0:8080/addtask -H "Content-Type: application/json" -d '{"category_id":"1", "title":"buy milk", "description":"muz be lactose-free lolz", "deadline": "2018-04-13T19:24:00+08:00"}'
-//		curl -X POST https://tomato-backend-api.herokuapp.com/addtask -H "Content-Type: application/json" -d '{"category_id":"1", "title":"buy milk", "description":"muz be lactose-free lolz", "deadline": "2018-04-13T19:24:00+08:00"}'
-//		curl -X POST 0.0.0.0:8080/addtask -H "Content-Type: application/json" -d '{"category_id":"1", "title":"buy milk", "description":"muz be lactose-free lolz", "deadline": null}'
-
-// update a task
-//		curl -X POST 0.0.0.0:8080/updatetask -H "Content-Type: application/json" -d '{"id":8, "category_id":"1", "title":"updated", "description":"this is an updated description", "deadline": "2018-04-13T19:24:00+08:00"}'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
